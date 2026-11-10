@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Freedoom</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; background: #0a0a0a; color: #eee; font-family: system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; overflow: hidden; }
+    .screen { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; outline: none; }
+    .status { position: absolute; inset: 0; display: grid; place-content: center; gap: 14px; padding: 24px; text-align: center; background: #0a0a0a; color: #c8c2bd; font-size: 14px; }
+    .status[hidden] { display: none; }
+    .status button, .pad button { color: #eee; background: #24201e; border: 1px solid #5c4840; border-radius: 4px; cursor: pointer; }
+    .status button { padding: 12px 20px; }
+    .pad { display: none; padding: 6px; gap: 5px; touch-action: none; }
+    .pad button { flex: 1; min-height: 42px; font: 600 12px system-ui; touch-action: none; user-select: none; }
+    .pad button:active { background: #914a32; }
+    @media (pointer: coarse) { .pad.active { display: grid; } .row { display: flex; gap: 5px; } }
+  </style>
+</head>
+<body>
+  <div class="screen">
+    <canvas id="canvas" tabindex="0" aria-label="Freedoom game screen"></canvas>
+    <div class="status" id="status" role="status"><span id="message">Loading Freedoom…</span><button id="start" type="button" hidden>Start game</button></div>
+  </div>
+  <div class="pad" id="pad" aria-label="Game controls">
+    <div class="row"><button data-key="ArrowLeft">↶</button><button data-key="ArrowUp">↑</button><button data-key="ArrowRight">↷</button><button data-key="KeyQ">STRAFE L</button><button data-key="KeyE">STRAFE R</button></div>
+    <div class="row"><button data-key="Control">FIRE</button><button data-key="ArrowDown">↓</button><button data-key="Space">USE</button></div>
+    <div class="row"><button data-key="Shift">RUN</button><button data-key="Digit1">1</button><button data-key="Digit2">2</button><button data-key="Digit3">3</button><button data-key="Enter">ENTER</button><button data-key="Escape">ESC</button></div>
+  </div>
+  <script>
+    (() => {
+      const canvas = document.getElementById('canvas');
+      const status = document.getElementById('status');
+      const message = document.getElementById('message');
+      const start = document.getElementById('start');
+      const pad = document.getElementById('pad');
+      const keys = { ArrowLeft:['ArrowLeft',37], ArrowRight:['ArrowRight',39], ArrowUp:['ArrowUp',38], ArrowDown:['ArrowDown',40], Control:['ControlLeft',17], Space:['Space',32], Shift:['ShiftLeft',16], Escape:['Escape',27], Enter:['Enter',13], KeyQ:['KeyQ',81], KeyE:['KeyE',69], Digit1:['Digit1',49], Digit2:['Digit2',50], Digit3:['Digit3',51] };
+      for (const button of pad.querySelectorAll('[data-key]')) {
+        const name = button.dataset.key;
+        const [code, keyCode] = keys[name];
+        const key = name === 'Space' ? ' ' : name.startsWith('Key') ? name.slice(3).toLowerCase() : name.startsWith('Digit') ? name.slice(5) : name;
+        const send = type => {
+          const event = new KeyboardEvent(type, { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true });
+          Object.defineProperty(event, 'keyCode', { get: () => keyCode });
+          Object.defineProperty(event, 'which', { get: () => keyCode });
+          canvas.dispatchEvent(event);
+        };
+        button.addEventListener('pointerdown', event => { event.preventDefault(); button.setPointerCapture(event.pointerId); send('keydown'); });
+        for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, () => send('keyup'));
+      }
+      async function load() {
+        try {
+          const responses = await Promise.all(['freedoom1.wad.part1', 'freedoom1.wad.part2', 'default.cfg'].map(path => fetch(path)));
+          if (responses.some(response => !response.ok)) throw new Error('Game files could not be loaded.');
+          const [first, second, config] = await Promise.all(responses.map(response => response.arrayBuffer()));
+          const wad = new Uint8Array(first.byteLength + second.byteLength);
+          wad.set(new Uint8Array(first)); wad.set(new Uint8Array(second), first.byteLength);
+          window.Module = {
+            canvas, noInitialRun: true, noExitRuntime: true,
+            preRun() {
+              Module.FS.mkdir('/savefiles');
+              Module.FS.createDataFile('/', 'freedoom1.wad', wad, true, true);
+              Module.FS.createDataFile('/', 'default.cfg', new Uint8Array(config), true, true);
+            },
+            onRuntimeInitialized() { message.textContent = 'Freedoom is ready'; start.hidden = false; },
+            printErr(text) { console.error(text); },
+            onAbort() { message.textContent = 'Could not start Freedoom. Please reload and try again.'; }
+          };
+          const script = document.createElement('script');
+          script.src = 'websockets-doom.js';
+          script.onerror = () => { message.textContent = 'Game engine could not be loaded.'; };
+          document.body.appendChild(script);
+        } catch (error) { message.textContent = 'Could not load Freedoom. Please reload and try again.'; console.error(error); }
+      }
+      start.addEventListener('click', () => {
+        try {
+          start.disabled = true;
+          canvas.focus();
+          callMain(['-iwad', 'freedoom1.wad', '-window', '-nogui', '-nomusic', '-config', 'default.cfg', '-savedir', '/savefiles']);
+          status.hidden = true; pad.classList.add('active');
+        } catch (error) { message.textContent = 'Could not start Freedoom. Please reload and try again.'; console.error(error); }
+      });
+      load();
+    })();
+  </script>
+</body>
+</html>
