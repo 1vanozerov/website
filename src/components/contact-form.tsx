@@ -1,22 +1,18 @@
 "use client";
 
-import HCaptcha from "@hcaptcha/react-hcaptcha";
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 export function ContactForm() {
-  const captcha = useRef<HCaptcha>(null);
-  const [token, setToken] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token || status === "sending") return;
+    if (status === "sending") return;
     const form = event.currentTarget;
     setStatus("sending");
     setMessage("");
     const data = new FormData(form);
-    data.set("h-captcha-response", token);
 
     try {
       const response = await fetch("https://api.web3forms.com/submit", { method: "POST", body: data });
@@ -28,15 +24,13 @@ export function ContactForm() {
     } catch {
       setStatus("error");
       setMessage("Could not send your message. Please try again or contact me by email.");
-    } finally {
-      captcha.current?.resetCaptcha();
-      setToken("");
     }
   }
 
   return (
     <form className="contact-form" onSubmit={submit}>
       <input type="hidden" name="access_key" value="4a5b602b-5d74-4cdb-becc-4bb400b026d3" />
+      <input type="checkbox" name="botcheck" tabIndex={-1} aria-hidden="true" style={{ display: "none" }} />
       <div className="contact-form__intro">
         <span className="contact-form__eyebrow">Contact / 01</span>
         <h1>Let’s<br />talk<span>.</span></h1>
@@ -47,17 +41,8 @@ export function ContactForm() {
       <label><span>01 / Name</span><input name="name" autoComplete="name" placeholder="Your name" required /></label>
       <label><span>02 / Email</span><input type="email" name="email" autoComplete="email" placeholder="you@example.com" required /></label>
       <label><span>03 / Message</span><textarea name="message" rows={4} placeholder="Tell me about your project" required /></label>
-      <p className="contact-form__privacy">Your details are processed to answer your enquiry. hCaptcha loads on this page for spam protection. See the <a href={`${process.env.NEXT_PUBLIC_ASSET_BASE_PATH ?? ""}/datenschutz/`}>privacy policy</a>.</p>
-      <div className="contact-form__captcha"><HCaptcha
-        ref={captcha}
-        sitekey="50b2fe65-b00b-4b9e-ad62-3ba471098be2"
-        reCaptchaCompat={false}
-        theme="dark"
-        onVerify={setToken}
-        onExpire={() => setToken("")}
-        onError={() => { setToken(""); setMessage("The verification could not load. Please try again or contact me by email."); }}
-      /></div>
-      <button type="submit" disabled={!token || status === "sending"}>
+      <p className="contact-form__privacy">Your details are processed to answer your enquiry. See the <a href={`${process.env.NEXT_PUBLIC_ASSET_BASE_PATH ?? ""}/datenschutz/`}>privacy policy</a>.</p>
+      <button type="submit" disabled={status === "sending"}>
         <span>{status === "sending" ? "Sending…" : "Send message"}</span><span aria-hidden="true">↗</span>
       </button>
       <p className="contact-form__status" role="status" aria-live="polite">{message}</p>
