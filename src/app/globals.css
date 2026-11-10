@@ -1459,7 +1459,6 @@ a:focus-visible { outline: 2px solid #fff; outline-offset: 6px; }
 .contact-form input::placeholder, .contact-form textarea::placeholder { color: rgba(225,232,227,.42); }
 .contact-form textarea { resize: vertical; }
 .contact-form input:focus-visible, .contact-form textarea:focus-visible, .contact-form button:focus-visible { outline: 2px solid #c7d8cc; outline-offset: 3px; }
-.contact-form__captcha { min-height: 78px; max-width: 100%; overflow: auto; }
 .contact-form button { display: flex; justify-content: space-between; align-items: center; gap: 50px; width: 100%; padding: 18px 22px; background: #d9e4dc; color: #111714; border: 0; cursor: pointer; font: inherit; transition: background .2s; }
 .contact-form button:not(:disabled):hover { background: #fff; }
 .contact-form button:disabled { opacity: .5; cursor: not-allowed; }
