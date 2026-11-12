@@ -1,0 +1,21 @@
+# Dependencies
+/node_modules
+
+# Next.js and production exports
+/.next/
+/out/
+/build/
+/next-env.d.ts
+
+# Local environment variables and secrets
+.env*
+!.env.example
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Logs and caches
+*.log
+*.tsbuildinfo
